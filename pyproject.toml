@@ -1,0 +1,40 @@
+[project]
+name = "pydantic-ai-litellm"
+version = "0.1.0"
+description = "LiteLLM model integration for Pydantic AI framework - access 100+ LLM providers through a unified interface"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+    {name = "Mottakin", email = "md.mottakin.chowdhury@gmail.com"}
+]
+maintainers = [
+    {name = "Mottakin", email = "md.mottakin.chowdhury@gmail.com"}
+]
+license = "MIT"
+keywords = ["pydantic", "ai", "llm", "litellm", "openai", "claude", "gemini", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "litellm>=1.75.5.post1",
+    "pydantic-ai-slim>=0.6.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/mochow13/pydantic-ai-litellm"
+Documentation = "https://github.com/mochow13/pydantic-ai-litellm#readme"
+Repository = "https://github.com/mochow13/pydantic-ai-litellm"
+"Bug Tracker" = "https://github.com/mochow13/pydantic-ai-litellm/issues"
+
+[dependency-groups]
+dev = [
+    "dotenv>=0.9.9",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+]
