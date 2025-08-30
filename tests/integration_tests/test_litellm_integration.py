@@ -6,12 +6,14 @@ This demonstrates actual LLM functionality using various providers through LiteL
 
 import asyncio
 import os
+import pytest
 from pydantic_ai import Agent
 from pydantic_ai_litellm import LiteLLMModel
 from dotenv import load_dotenv
 
 load_dotenv()
 
+@pytest.mark.asyncio
 async def test_basic_completion():
     """Test basic completion functionality"""
     print("=== Testing Basic Completion ===")
@@ -36,6 +38,7 @@ async def test_basic_completion():
         print("No models were successfully tested. Make sure you have API keys set up.")
 
 
+@pytest.mark.asyncio
 async def test_streaming():
     """Test streaming functionality"""
     print("\n=== Testing Streaming ===")
@@ -60,6 +63,7 @@ async def test_streaming():
         print(f"Streaming test failed: {str(e)}")
 
 
+@pytest.mark.asyncio
 async def test_structured_output():
     """Test structured output with Pydantic models"""
     print("\n=== Testing Structured Output ===")
@@ -105,6 +109,7 @@ def multiply(a: float, b: float) -> float:
     """Multiply two numbers."""
     return a * b
 
+@pytest.mark.asyncio
 async def test_tool_calling():
     """Test tool calling functionality"""
     print("\n=== Testing Tool Calling ===")

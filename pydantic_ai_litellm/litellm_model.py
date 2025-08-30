@@ -259,12 +259,11 @@ class LiteLLMModel(Model):
                     items.append(part)
 
         # Map usage
-        usage_obj = usage.Usage()
+        usage_obj = usage.RunUsage()
         if response.usage:
-            usage_obj = usage.Usage(
-                request_tokens=getattr(response.usage, 'prompt_tokens', None),
-                response_tokens=getattr(response.usage, 'completion_tokens', None),
-                total_tokens=getattr(response.usage, 'total_tokens', None),
+            usage_obj = usage.RunUsage(
+                input_tokens=getattr(response.usage, 'prompt_tokens', 0),
+                output_tokens=getattr(response.usage, 'completion_tokens', 0),
             )
 
         # Get timestamp
@@ -277,7 +276,7 @@ class LiteLLMModel(Model):
             usage=usage_obj,
             model_name=getattr(response, 'model', self._model_name),
             timestamp=timestamp,
-            vendor_id=getattr(response, 'id', None),
+            provider_response_id=getattr(response, 'id', None),
         )
 
     async def _process_streamed_response(
@@ -299,6 +298,7 @@ class LiteLLMModel(Model):
             _model_name=self._model_name,
             _response=peekable_response,
             _timestamp=timestamp,
+            model_request_parameters=model_request_parameters,
         )
 
     def _get_tools(self, model_request_parameters: ModelRequestParameters) -> list[dict[str, Any]]:
@@ -421,10 +421,9 @@ class LiteLLMStreamedResponse(StreamedResponse):
         async for chunk in self._response:
             # Update usage if available
             if hasattr(chunk, 'usage') and chunk.usage:
-                self._usage += usage.Usage(
-                    request_tokens=getattr(chunk.usage, 'prompt_tokens', None),
-                    response_tokens=getattr(chunk.usage, 'completion_tokens', None),
-                    total_tokens=getattr(chunk.usage, 'total_tokens', None),
+                self._usage += usage.RunUsage(
+                    input_tokens=getattr(chunk.usage, 'prompt_tokens', 0),
+                    output_tokens=getattr(chunk.usage, 'completion_tokens', 0),
                 )
 
             if not chunk.choices:
@@ -463,3 +462,8 @@ class LiteLLMStreamedResponse(StreamedResponse):
     def timestamp(self) -> datetime:
         """Get the timestamp of the response."""
         return self._timestamp
+
+    @property
+    def provider_name(self) -> str | None:
+        """Get the provider name."""
+        return 'litellm'
