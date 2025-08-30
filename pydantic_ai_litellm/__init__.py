@@ -1,6 +1,6 @@
 from importlib import metadata
 
-from .litellm_model import LiteLLMModel
+from .litellm_model import LiteLLMModel, LiteLLMModelSettings
 
 try:
     __version__ = metadata.version(__package__)
@@ -11,5 +11,6 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
     "LiteLLMModel",
+    "LiteLLMModelSettings",
     "__version__",
 ]

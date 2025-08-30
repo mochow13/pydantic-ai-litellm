@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "litellm>=1.75.5.post1",
-    "pydantic-ai-slim>=0.6.2",
+    "pydantic-ai-slim>=0.8.1",
 ]
 
 [project.urls]
