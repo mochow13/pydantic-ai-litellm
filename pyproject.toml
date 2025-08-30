@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-ai-litellm"
-version = "0.1.0"
+version = "0.2.0"
 description = "LiteLLM model integration for Pydantic AI framework - access 100+ LLM providers through a unified interface"
 readme = "README.md"
 requires-python = ">=3.13"
