@@ -1,4 +1,4 @@
-## `0.2.0` - Aug 3`, 2025
+## `0.2.0` - Aug 31, 2025
 
 `0.1.0` was broken with newer version of `pydantic-ai-slim`.
 
