@@ -13,16 +13,18 @@ async def main():
     
     # Example 1: Using settings dictionary
     print("=== Configuration with Settings Dictionary ===")
-    
+
     settings: LiteLLMModelSettings = {
         'temperature': 0.7,
         'max_tokens': 1000,
-        'litellm_api_key': os.getenv('GEMINI_API_KEY'),
-        'litellm_api_base': 'https://generativelanguage.googleapis.com',
         'extra_headers': {'Custom-Header': 'value'}
     }
 
-    model = LiteLLMModel("gemini/gemini-2.5-flash", settings=settings)
+    model = LiteLLMModel(
+        model_name="gemini/gemini-2.5-flash",
+        api_key=os.environ.get('GEMINI_API_KEY'),
+        settings=settings
+    )
     agent = Agent(model=model)
     
     try:
@@ -35,7 +37,7 @@ async def main():
         print(f"Configuration example 1 failed: {e}")
         print()
     
-    # Example 2: Temperature comparison
+    # # Example 2: Temperature comparison
     print("=== Temperature Comparison ===")
     
     # Low temperature (more deterministic)
