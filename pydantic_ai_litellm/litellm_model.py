@@ -42,7 +42,6 @@ __all__ = (
     'LiteLLMModelSettings',
 )
 
-
 class LiteLLMModelSettings(ModelSettings, total=False):
     """Settings used for a LiteLLM model request."""
 
