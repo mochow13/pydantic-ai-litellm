@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-ai-litellm"
-version = "0.2.1"
+version = "0.2.2"
 description = "LiteLLM model integration for Pydantic AI framework - access 100+ LLM providers through a unified interface"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -22,8 +22,8 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "litellm>=1.76.3",
-    "pydantic-ai-slim>=1.0.1",
+    "litellm>=1.79.1",
+    "pydantic-ai-slim>=1.12.0",
 ]
 
 [project.urls]
