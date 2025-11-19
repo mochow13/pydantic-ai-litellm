@@ -1,5 +1,7 @@
 # Pydantic AI LiteLLM
 
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/pydantic-ai-litellm?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/pydantic-ai-litellm)
+
 A LiteLLM model integration for the [Pydantic AI](https://ai.pydantic.dev/) framework, enabling access to 100+ LLM providers through a unified interface.
 
 ## Features
