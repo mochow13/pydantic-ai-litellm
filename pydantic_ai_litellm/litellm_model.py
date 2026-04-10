@@ -269,7 +269,13 @@ class LiteLLMModel(Model):
         timestamp = _now_utc()
         if hasattr(response, 'created') and response.created:
             timestamp = datetime.fromtimestamp(response.created, tz=timestamp.tzinfo)
-        provider_details = response._hidden_params if hasattr(response, '_hidden_params') else None
+        hidden_params = getattr(response, '_hidden_params', None)
+        provider_details = None
+        if hidden_params is not None:
+            try:
+                provider_details = dict(hidden_params)
+            except (TypeError, ValueError):
+                provider_details = None
         return ModelResponse(
             items,
             usage=usage_obj,
