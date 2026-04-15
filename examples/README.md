@@ -73,6 +73,27 @@ Shows different model configuration options like temperature, token limits, etc.
 python examples/06_configuration.py
 ```
 
+### 7. Install from PyPI (`07_install_from_pypi.py`)
+End-to-end flow as a PyPI consumer: install the package, set `OPENAI_API_KEY`, run a small agent with a tool.
+
+**Install:**
+
+```bash
+pip install pydantic-ai-litellm
+```
+
+**Required environment variables:**
+
+- `OPENAI_API_KEY`: Your OpenAI API key (default model is OpenAI)
+
+**Optional:**
+
+- `MODEL_NAME`: LiteLLM model id (default `gpt-4o-mini`)
+
+```bash
+python examples/07_install_from_pypi.py
+```
+
 ## Setting Up Environment Variables
 
 Create a `.env` file in your project root or set these variables in your shell:
