@@ -24,7 +24,7 @@ async def main():
     try:
         result = await agent.run("Hello! Can you tell me about yourself?")
         print(f"Custom endpoint result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
     except Exception as e:
         print(f"Error with custom endpoint: {e}")
         print("Note: This example requires a valid custom endpoint URL and API key")
