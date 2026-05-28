@@ -23,7 +23,7 @@ async def main():
     # Run inference
     result = await agent.run("What is the capital of France?")
     print(f"Result: {result.output}")
-    print(f"Usage: {result.usage()}")
+    print(f"Usage: {result.usage}")
 
 if __name__ == "__main__":
     asyncio.run(main())

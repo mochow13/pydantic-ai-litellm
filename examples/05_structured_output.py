@@ -43,7 +43,7 @@ async def main():
         print(f"Name: {person.name}")
         print(f"Age: {person.age}")
         print(f"Occupation: {person.occupation}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print()
         
     except Exception as e:
@@ -71,7 +71,7 @@ async def main():
         print(f"Overall Score: {review.overall_score}/10")
         print(f"Strengths: {review.strengths}")
         print(f"Suggestions: {review.suggestions}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print()
         
     except Exception as e:
@@ -92,7 +92,7 @@ async def main():
         print(f"Temperature: {weather.temperature}°C")
         print(f"Condition: {weather.condition}")
         print(f"Humidity: {weather.humidity}%")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         
     except Exception as e:
         print(f"Weather generation failed: {e}")

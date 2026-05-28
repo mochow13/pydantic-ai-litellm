@@ -77,7 +77,7 @@ async def main() -> None:
         "What's going on with order ORD-1001A? One short sentence with the status."
     )
     print(result.output)
-    print(f"usage: {result.usage()}")
+    print(f"usage: {result.usage}")
 
 
 if __name__ == "__main__":

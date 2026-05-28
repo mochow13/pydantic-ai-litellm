@@ -41,19 +41,19 @@ async def main():
         # Test weather tool
         result = await agent.run("What's the weather in Paris?")
         print(f"Weather query result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print()
         
         # Test calculation tool
         result = await agent.run("What is 25 * 4 + 10?")
         print(f"Calculation result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print()
         
         # Test multiple tools in one conversation
         result = await agent.run("Calculate 15 + 27 and then tell me the weather in Tokyo")
         print(f"Multi-tool result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         
     except Exception as e:
         print(f"Tool calling failed: {e}")

@@ -30,7 +30,7 @@ async def main():
     try:
         result = await agent.run("Write a short creative story in exactly 100 words")
         print(f"Result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print()
         
     except Exception as e:
@@ -88,7 +88,7 @@ async def main():
         limited_agent = Agent(model=limited_model)
         result = await limited_agent.run("Explain quantum computing in detail")
         print(f"Limited tokens response: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         
     except Exception as e:
         print(f"Token limit example failed: {e}")

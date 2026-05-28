@@ -1,3 +1,15 @@
+## `0.2.6` - May 28, 2026
+
+- Fix compatibility with `pydantic-ai-slim` >=1.95: replace removed `_get_instructions` with `_get_instruction_parts` ([#8](https://github.com/mochow13/pydantic-ai-litellm/issues/8)).
+- Merge consecutive leading system messages for strict LiteLLM/vLLM backends.
+- Dependencies: require `litellm>=1.86.2` and `pydantic-ai-slim>=1.95.0` (raised from `>=1.83.8` / `>=1.82.0` in `0.2.5`).
+
+**Notes for upgraders** (public `LiteLLMModel` / `LiteLLMModelSettings` API is unchanged):
+
+- **Dependency floors**: upgrading from `0.2.5` requires `pydantic-ai-slim` >=1.95 and `litellm` >=1.86.2; older pins will not resolve.
+- **Subclasses**: `_map_messages` now takes `model_request_parameters`; override it only with the updated signature.
+- **Instruction message ordering**: agent instructions are inserted before the first non-system message and consecutive leading system messages are merged with `\n\n` — a subtle behavior change vs always prepending a single system message at index 0.
+
 ## `0.2.5` - Apr 16, 2026
 
 - New upload on PyPI: `0.2.4` artifacts cannot be overwritten ([file name reuse](https://pypi.org/help/#file-name-reuse)), so this patch increments the version only for publishing.

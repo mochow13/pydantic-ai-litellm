@@ -42,6 +42,24 @@ __all__ = (
     'LiteLLMModelSettings',
 )
 
+
+def _merge_leading_system_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge consecutive leading system messages into one.
+
+    Required by strict OpenAI-compatible backends (some LiteLLM/vLLM deployments) that
+    reject more than one initial system message.
+    """
+    leading_count = next(
+        (i for i, m in enumerate(messages) if m.get('role') != 'system'),
+        len(messages),
+    )
+    if leading_count < 2:
+        return messages
+
+    merged_content = '\n\n'.join(m['content'] for m in messages[:leading_count])
+    merged = {**messages[0], 'content': merged_content}
+    return [merged, *messages[leading_count:]]
+
 class LiteLLMModelSettings(ModelSettings, total=False):
     """Settings used for a LiteLLM model request."""
 
@@ -160,7 +178,7 @@ class LiteLLMModel(Model):
             else:
                 tool_choice = 'auto'
 
-        litellm_messages = await self._map_messages(messages)
+        litellm_messages = await self._map_messages(messages, model_request_parameters)
 
         # Prepare completion arguments
         completion_kwargs: dict[str, Any] = {
@@ -316,7 +334,9 @@ class LiteLLMModel(Model):
             },
         }
 
-    async def _map_messages(self, messages: list[ModelMessage]) -> list[dict[str, Any]]:
+    async def _map_messages(
+        self, messages: list[ModelMessage], model_request_parameters: ModelRequestParameters
+    ) -> list[dict[str, Any]]:
         """Map pydantic_ai messages to LiteLLM format (OpenAI-compatible)."""
         litellm_messages: list[dict[str, Any]] = []
         
@@ -397,13 +417,17 @@ class LiteLLMModel(Model):
             else:
                 assert_never(message)
 
-        # Add instructions as system message if present
-        if instructions := self._get_instructions(messages):
-            # Insert at the beginning
-            litellm_messages.insert(0, {
-                'role': 'system',
-                'content': instructions,
-            })
+        if instruction_parts := self._get_instruction_parts(messages, model_request_parameters):
+            system_prompt_count = next(
+                (i for i, m in enumerate(litellm_messages) if m.get('role') != 'system'),
+                len(litellm_messages),
+            )
+            instruction_messages = [
+                {'role': 'system', 'content': part.content}
+                for part in instruction_parts
+            ]
+            litellm_messages[system_prompt_count:system_prompt_count] = instruction_messages
+            litellm_messages = _merge_leading_system_messages(litellm_messages)
 
         return litellm_messages
 

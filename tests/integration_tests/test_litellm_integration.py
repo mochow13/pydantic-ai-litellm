@@ -30,7 +30,7 @@ async def test_basic_completion():
         
         result = await agent.run("What is 2+2? Answer with just the number.")
         print(f"Result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         
     except Exception as e:
         print(f"Failed to test {model.model_name}: {str(e)}")
@@ -127,7 +127,7 @@ async def test_tool_calling():
         result = await agent.run("What is 2129731231494*208977523231?")
 
         print(f"Result: {result.output}")
-        print(f"Usage: {result.usage()}")
+        print(f"Usage: {result.usage}")
         print(f"Messages: {result.all_messages()}")
         print(f"Test tool calling completed.")
 
