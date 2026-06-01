@@ -1,3 +1,9 @@
+## `0.2.7` - Jun 1, 2026
+
+- Fix double-counting of `RunUsage.requests` in non-streamed requests ([#11](https://github.com/mochow13/pydantic-ai-litellm/pull/11)).
+- Add `[build-system]` table (`hatchling`) to `pyproject.toml` so `uv sync` correctly installs the package in editable mode.
+- CI: add GitHub Actions workflow that runs unit tests across Python 3.10–3.13 on every PR and merge to `main`.
+
 ## `0.2.6` - May 28, 2026
 
 - Fix compatibility with `pydantic-ai-slim` >=1.95: replace removed `_get_instructions` with `_get_instruction_parts` ([#8](https://github.com/mochow13/pydantic-ai-litellm/issues/8)).
