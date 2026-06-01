@@ -134,9 +134,7 @@ class LiteLLMModel(Model):
         response = await self._completion_create(
             messages, False, cast(LiteLLMModelSettings, model_settings or {}), model_request_parameters
         )
-        model_response = self._process_response(response)
-        model_response.usage.requests = 1
-        return model_response
+        return self._process_response(response)
 
     @asynccontextmanager
     async def request_stream(

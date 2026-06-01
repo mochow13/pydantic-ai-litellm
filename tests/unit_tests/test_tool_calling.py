@@ -198,6 +198,12 @@ class TestToolCalling:
             output_tools=[],
             allow_text_output=True
         )
-        
+
         tools = self.model._get_tools(model_params)
         assert tools == []
+
+    def test_process_response_does_not_set_requests(self):
+        """_process_response must not set requests — the pydantic-ai framework counts it."""
+        mock_response = MockLiteLLMResponse(content="Hello")
+        result = self.model._process_response(mock_response)
+        assert result.usage.requests == 0
