@@ -35,6 +35,10 @@ Documentation = "https://github.com/mochow13/pydantic-ai-litellm#readme"
 Repository = "https://github.com/mochow13/pydantic-ai-litellm"
 "Bug Tracker" = "https://github.com/mochow13/pydantic-ai-litellm/issues"
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "dotenv>=0.9.9",

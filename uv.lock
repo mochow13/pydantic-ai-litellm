@@ -1313,7 +1313,7 @@ wheels = [
 [[package]]
 name = "pydantic-ai-litellm"
 version = "0.2.6"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "litellm" },
     { name = "pydantic-ai-slim" },
