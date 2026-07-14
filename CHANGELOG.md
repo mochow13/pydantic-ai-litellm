@@ -1,3 +1,7 @@
+## `0.2.8` - Jun 2, 2026
+
+- Fix streaming for `pydantic-ai-slim` 1.103: implement `provider_url` on `LiteLLMStreamedResponse` (previously an unimplemented abstract method) and consume `handle_text_delta` as an iterator instead of a single event ([#13](https://github.com/mochow13/pydantic-ai-litellm/pull/13)).
+
 ## `0.2.7` - Jun 1, 2026
 
 - Fix double-counting of `RunUsage.requests` in non-streamed requests ([#11](https://github.com/mochow13/pydantic-ai-litellm/pull/11)).
