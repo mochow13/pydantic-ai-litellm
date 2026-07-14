@@ -454,12 +454,11 @@ class LiteLLMStreamedResponse(StreamedResponse):
             
             # Handle text content
             if choice.delta and choice.delta.content:
-                maybe_event = self._parts_manager.handle_text_delta(
+                for event in self._parts_manager.handle_text_delta(
                     vendor_part_id='content',
                     content=choice.delta.content,
-                )
-                if maybe_event is not None:
-                    yield maybe_event
+                ):
+                    yield event
 
             # Handle tool calls
             if choice.delta and choice.delta.tool_calls:
@@ -473,6 +472,10 @@ class LiteLLMStreamedResponse(StreamedResponse):
                         )
                         if maybe_event is not None:
                             yield maybe_event
+    @property
+    def provider_url(self) -> str | None:
+        """Get the provider base URL."""
+        return None
 
     @property
     def model_name(self) -> str:
