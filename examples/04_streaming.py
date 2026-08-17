@@ -12,7 +12,7 @@ async def main():
     """Example showing streaming functionality."""
     
     model = LiteLLMModel(
-        model_name="gemini/gemini-2.5-flash",
+        model_name="gemini/gemini-3.1-flash-lite",
         api_key=os.getenv("GEMINI_API_KEY")
     )
     

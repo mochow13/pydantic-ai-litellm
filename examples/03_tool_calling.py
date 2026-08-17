@@ -31,8 +31,8 @@ async def main():
     """Example showing tool calling functionality."""
     
     model = LiteLLMModel(
-        model_name="gemini/gemini-2.5-flash",
-        api_key=os.getenv("OPENAI_API_KEY")
+        model_name="gemini/gemini-3.1-flash-lite",
+        api_key=os.getenv("GEMINI_API_KEY")
     )
     
     agent = Agent(model=model, tools=[get_weather, calculate])
