@@ -74,6 +74,26 @@ model = LiteLLMModel(
 )
 ```
 
+### Responses API
+
+Alongside Chat Completions, several providers (OpenAI, Azure OpenAI, xAI, OpenRouter, Perplexity,
+and others -- see [LiteLLM's Responses API docs](https://docs.litellm.ai/docs/response_api) for
+the full list) also support the newer Responses API. It's required for some reasoning models --
+e.g. OpenAI's `gpt-5.x` line rejects function tools on `/v1/chat/completions` once reasoning is
+involved, and needs `/v1/responses` instead. Use `LiteLLMResponsesModel` for these -- it has the
+same constructor and settings shape as `LiteLLMModel`, but calls LiteLLM's `aresponses` under the
+hood:
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai_litellm import LiteLLMResponsesModel
+
+model = LiteLLMResponsesModel("gpt-5.1", api_key="your-api-key")
+agent = Agent(model=model, tools=[get_weather])
+
+result = await agent.run("What's the weather in Paris?")
+```
+
 ### Tool Calling
 
 ```python
@@ -155,6 +175,7 @@ See the `examples/` directory for complete working examples:
 - **Streaming** (`examples/04_streaming.py`) - Real-time text streaming
 - **Structured Output** (`examples/05_structured_output.py`) - Typed responses with Pydantic
 - **Configuration** (`examples/06_configuration.py`) - Model settings and parameters
+- **Responses API** (`examples/08_responses_api.py`) - Tool calling with reasoning-capable models via `LiteLLMResponsesModel`
 
 Each example includes error handling and can be run independently with the appropriate API keys.
 

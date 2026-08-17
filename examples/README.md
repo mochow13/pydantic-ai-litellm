@@ -94,6 +94,19 @@ pip install pydantic-ai-litellm
 python examples/07_install_from_pypi.py
 ```
 
+### 8. Responses API (`08_responses_api.py`)
+Uses `LiteLLMResponsesModel` for tool calling with reasoning-capable OpenAI models (e.g. `gpt-5.x`) that reject function tools on `/v1/chat/completions` and require `/v1/responses` instead.
+
+**Required environment variables:**
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+**Optional:**
+- `MODEL_NAME`: LiteLLM model id (default `gpt-5.1`)
+
+```bash
+python examples/08_responses_api.py
+```
+
 ## Setting Up Environment Variables
 
 Create a `.env` file in your project root or set these variables in your shell:
