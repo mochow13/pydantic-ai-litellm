@@ -13,7 +13,7 @@ async def main():
     
     # Initialize with any LiteLLM-supported model
     model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.getenv("GEMINI_API_KEY")
     )
 

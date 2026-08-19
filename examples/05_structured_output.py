@@ -29,7 +29,7 @@ async def main():
     """Example showing structured output with Pydantic models."""
     
     model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.getenv("GEMINI_API_KEY")
     )
     

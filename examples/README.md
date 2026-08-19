@@ -37,7 +37,7 @@ python examples/02_custom_endpoints.py
 Shows how to use functions as tools that the AI can call.
 
 **Required environment variables:**
-- `GEMINI_API_KEY`: Your Google Gemini API key
+- `OPENAI_API_KEY`: Your OpenAI API key
 
 ```bash
 python examples/03_tool_calling.py

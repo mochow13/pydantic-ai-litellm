@@ -21,7 +21,7 @@ async def main():
     }
 
     model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.environ.get('GEMINI_API_KEY'),
         settings=settings
     )
@@ -42,14 +42,14 @@ async def main():
     
     # Low temperature (more deterministic)
     low_temp_model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.getenv("GEMINI_API_KEY"),
         settings={'temperature': 0.1}
     )
     
     # High temperature (more creative)
     high_temp_model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.getenv("GEMINI_API_KEY"),
         settings={'temperature': 0.9}
     )
@@ -76,7 +76,7 @@ async def main():
     print("=== Token Limit Example ===")
     
     limited_model = LiteLLMModel(
-        model_name="gemini/gemini-3.1-flash-lite",
+        model_name="gemini/gemini-2.5-flash",
         api_key=os.getenv("GEMINI_API_KEY"),
         settings={
             'max_tokens': 50,  # Very limited response
