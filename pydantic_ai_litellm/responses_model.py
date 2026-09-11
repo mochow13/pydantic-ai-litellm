@@ -31,6 +31,7 @@ from pydantic_ai.messages import (
     RetryPromptPart,
     SystemPromptPart,
     TextPart,
+    ThinkingPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -277,6 +278,34 @@ class LiteLLMResponsesModel(Model):
                 part.tool_call_id = _guard_tool_call_id(part)
                 items.append(part)
 
+            elif item_type == 'reasoning':
+                # Reasoning models (e.g. `gpt-5.x`, `o3`) return their chain-of-thought as a
+                # dedicated `reasoning` output item, separate from `message`/`function_call`.
+                # It must round-trip back through `_map_messages` on the next turn. Some
+                # providers reject a `function_call` that isn't preceded by the `reasoning`
+                # item that produced it.
+                reasoning_id = _get_field(output_item, 'id')
+                signature = _get_field(output_item, 'encrypted_content')
+                summaries = _get_field(output_item, 'summary') or []
+                if summaries:
+                    for summary_item in summaries:
+                        items.append(ThinkingPart(
+                            content=_get_field(summary_item, 'text') or '',
+                            id=reasoning_id,
+                            signature=signature,
+                            provider_name=self._system,
+                        ))
+                        # The signature belongs to the reasoning item as a whole, not to each
+                        # summary. Only attach it to the first part so it isn't duplicated.
+                        signature = None
+                elif reasoning_id or signature:
+                    items.append(ThinkingPart(
+                        content='',
+                        id=reasoning_id,
+                        signature=signature,
+                        provider_name=self._system,
+                    ))
+
         # Map usage
         usage_obj = usage.RunUsage()
         if response.usage:
@@ -410,6 +439,11 @@ class LiteLLMResponsesModel(Model):
                         assert_never(part)
 
             elif isinstance(message, ModelResponse):
+                # Reasoning items whose `id` we've already appended to `input_items` in this
+                # message, so multiple `ThinkingPart`s for the same item (one per summary)
+                # merge back into a single `reasoning` item instead of duplicating it.
+                reasoning_items: dict[str, dict[str, Any]] = {}
+
                 for part in message.parts:
                     if isinstance(part, TextPart):
                         input_items.append({
@@ -424,6 +458,20 @@ class LiteLLMResponsesModel(Model):
                             'name': part.tool_name,
                             'arguments': part.args_as_json_str(),
                         })
+                    elif isinstance(part, ThinkingPart):
+                        if part.provider_name != self._system or not part.id:
+                            continue
+
+                        reasoning_item = reasoning_items.get(part.id)
+                        if reasoning_item is None:
+                            reasoning_item = {'type': 'reasoning', 'id': part.id, 'summary': []}
+                            if part.signature:
+                                reasoning_item['encrypted_content'] = part.signature
+                            reasoning_items[part.id] = reasoning_item
+                            input_items.append(reasoning_item)
+
+                        if part.content:
+                            reasoning_item['summary'].append({'type': 'summary_text', 'text': part.content})
                     else:
                         # Handle other part types as needed
                         pass
@@ -476,6 +524,35 @@ class LiteLLMResponsesStreamedResponse(StreamedResponse):
                 )
                 if maybe_event is not None:
                     yield maybe_event
+
+            # Handle reasoning summary text deltas
+            elif event_type == 'response.reasoning_summary_text.delta':
+                item_id = _get_field(chunk, 'item_id')
+                summary_index = _get_field(chunk, 'summary_index', 0)
+                # Same vendor id as summary index 0 so a single-summary reasoning item
+                # accumulates into one ThinkingPart instead of a new part per delta.
+                vendor_part_id = item_id if summary_index == 0 else f'{item_id}-{summary_index}'
+                for event in self._parts_manager.handle_thinking_delta(
+                    vendor_part_id=vendor_part_id,
+                    content=_get_field(chunk, 'delta'),
+                    id=item_id,
+                    provider_name=self.provider_name,
+                ):
+                    yield event
+
+            # The reasoning item's signature is only available once it's finished streaming
+            elif event_type == 'response.output_item.done':
+                item = _get_field(chunk, 'item')
+                if _get_field(item, 'type') == 'reasoning':
+                    item_id = _get_field(item, 'id')
+                    if signature := _get_field(item, 'encrypted_content'):
+                        for event in self._parts_manager.handle_thinking_delta(
+                            vendor_part_id=item_id,
+                            id=item_id,
+                            signature=signature,
+                            provider_name=self.provider_name,
+                        ):
+                            yield event
 
             # Update usage -- the Responses API only reports final usage once, on completion
             elif event_type == 'response.completed':

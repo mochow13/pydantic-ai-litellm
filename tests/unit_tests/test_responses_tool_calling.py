@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 from typing import List, Dict
 
 from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.messages import ModelRequest, ToolCallPart, TextPart, UserPromptPart
+from pydantic_ai.messages import ModelRequest, ThinkingPart, ToolCallPart, TextPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
 
 from pydantic_ai_litellm import LiteLLMResponsesModel
@@ -21,8 +21,26 @@ from pydantic_ai_litellm import LiteLLMResponsesModel
 class MockLiteLLMResponsesResponse:
     """Mock response object for LiteLLM's Responses API (`aresponses`)."""
 
-    def __init__(self, text: str = None, tool_calls: List[Dict] = None):
+    def __init__(
+        self,
+        text: str = None,
+        tool_calls: List[Dict] = None,
+        reasoning: Dict = None,
+    ):
         self.output = []
+
+        if reasoning is not None:
+            reasoning_item = Mock()
+            reasoning_item.type = 'reasoning'
+            reasoning_item.id = reasoning.get('id', 'reasoning_1')
+            reasoning_item.encrypted_content = reasoning.get('encrypted_content')
+            summary_items = []
+            for summary_text in reasoning.get('summary', []):
+                summary_item = Mock()
+                summary_item.text = summary_text
+                summary_items.append(summary_item)
+            reasoning_item.summary = summary_items
+            self.output.append(reasoning_item)
 
         if text is not None:
             content_item = Mock()
@@ -216,3 +234,41 @@ class TestResponsesToolCalling:
         mock_response = MockLiteLLMResponsesResponse(text="Hello")
         result = self.model._process_response(mock_response)
         assert result.usage.requests == 0
+
+    def test_process_response_with_reasoning(self):
+        """A `reasoning` output item must not be silently dropped -- it maps to a
+        `ThinkingPart` so it can round-trip back to the API on the next turn (some
+        providers reject a `function_call` not preceded by the `reasoning` item that
+        produced it)."""
+        mock_response = MockLiteLLMResponsesResponse(
+            reasoning={'id': 'rs_1', 'encrypted_content': 'enc-content', 'summary': ['Thinking it through...']},
+            tool_calls=[{'call_id': 'call_123', 'name': 'calculator', 'arguments': '{"a": 1, "b": 2}'}],
+        )
+
+        result = self.model._process_response(mock_response)
+
+        thinking_part = next(part for part in result.parts if isinstance(part, ThinkingPart))
+        assert thinking_part.content == "Thinking it through..."
+        assert thinking_part.id == "rs_1"
+        assert thinking_part.signature == "enc-content"
+        assert thinking_part.provider_name == "litellm"
+
+        tool_call_part = next(part for part in result.parts if isinstance(part, ToolCallPart))
+        assert tool_call_part.tool_name == "calculator"
+
+    def test_process_response_with_reasoning_multiple_summaries(self):
+        """Multiple summary entries on one reasoning item map to multiple `ThinkingPart`s
+        sharing the same `id`, with the signature attached only to the first."""
+        mock_response = MockLiteLLMResponsesResponse(
+            reasoning={'id': 'rs_1', 'encrypted_content': 'enc-content', 'summary': ['Step one.', 'Step two.']},
+        )
+
+        result = self.model._process_response(mock_response)
+
+        thinking_parts = [part for part in result.parts if isinstance(part, ThinkingPart)]
+        assert len(thinking_parts) == 2
+        assert thinking_parts[0].content == "Step one."
+        assert thinking_parts[0].signature == "enc-content"
+        assert thinking_parts[1].content == "Step two."
+        assert thinking_parts[1].signature is None
+        assert all(part.id == "rs_1" for part in thinking_parts)

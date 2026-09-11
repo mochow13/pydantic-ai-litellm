@@ -13,6 +13,7 @@ from pydantic_ai.messages import (
     ModelResponse,
     SystemPromptPart,
     TextPart,
+    ThinkingPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -116,3 +117,71 @@ class TestResponsesMapMessages:
         result = await self.model._map_messages(messages)
 
         assert result[1] == {'type': 'message', 'role': 'assistant', 'content': 'Hello there!'}
+
+    @pytest.mark.asyncio
+    async def test_thinking_part_mapped_to_reasoning_item(self):
+        """A `ThinkingPart` this provider produced must round-trip back to a `reasoning`
+        input item, not be dropped -- some providers reject a `function_call` that isn't
+        preceded by the `reasoning` item that produced it."""
+        messages = [
+            ModelRequest([UserPromptPart("What is 2+2?")]),
+            ModelResponse([
+                ThinkingPart(content="Let me think...", id="rs_1", signature="enc-content", provider_name="litellm"),
+                ToolCallPart(tool_name="calculator", args='{"a": 2, "b": 2}', tool_call_id="call_1"),
+            ]),
+        ]
+
+        result = await self.model._map_messages(messages)
+
+        assert result[1] == {
+            'type': 'reasoning',
+            'id': 'rs_1',
+            'summary': [{'type': 'summary_text', 'text': 'Let me think...'}],
+            'encrypted_content': 'enc-content',
+        }
+        assert result[2]['type'] == 'function_call'
+
+    @pytest.mark.asyncio
+    async def test_multiple_thinking_parts_merged_into_one_reasoning_item(self):
+        """Multiple `ThinkingPart`s sharing an `id` (one per summary) merge back into a
+        single `reasoning` item instead of duplicating it."""
+        messages = [
+            ModelResponse([
+                ThinkingPart(content="Step one.", id="rs_1", signature="enc-content", provider_name="litellm"),
+                ThinkingPart(content="Step two.", id="rs_1", provider_name="litellm"),
+            ]),
+        ]
+
+        result = await self.model._map_messages(messages)
+
+        assert result == [{
+            'type': 'reasoning',
+            'id': 'rs_1',
+            'summary': [
+                {'type': 'summary_text', 'text': 'Step one.'},
+                {'type': 'summary_text', 'text': 'Step two.'},
+            ],
+            'encrypted_content': 'enc-content',
+        }]
+
+    @pytest.mark.asyncio
+    async def test_thinking_part_without_id_is_dropped(self):
+        """A `ThinkingPart` without an `id` can't be paired with the following
+        `function_call` by the Responses API, so it's dropped rather than sent malformed."""
+        messages = [ModelResponse([ThinkingPart(content="Untracked thought.", provider_name="litellm")])]
+
+        result = await self.model._map_messages(messages)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_thinking_part_from_other_provider_is_dropped(self):
+        """A `ThinkingPart` produced by a different provider can't be sent back to this
+        one -- signatures/ids are only meaningful to the provider that issued them."""
+        messages = [
+            ModelResponse([ThinkingPart(content="Foreign thought.", id="rs_1", provider_name="other-provider")])
+        ]
+
+        result = await self.model._map_messages(messages)
+
+        assert result == []

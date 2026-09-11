@@ -15,6 +15,8 @@ from pydantic_ai.messages import (
     PartStartEvent,
     TextPart,
     TextPartDelta,
+    ThinkingPart,
+    ThinkingPartDelta,
     ToolCallPart,
     ToolCallPartDelta,
 )
@@ -43,6 +45,14 @@ def _make_function_call_item(*, call_id: str, name: str, arguments: str = '') ->
     item.call_id = call_id
     item.name = name
     item.arguments = arguments
+    return item
+
+
+def _make_reasoning_item(*, item_id: str, encrypted_content: str | None = None) -> Mock:
+    item = Mock()
+    item.type = 'reasoning'
+    item.id = item_id
+    item.encrypted_content = encrypted_content
     return item
 
 
@@ -144,6 +154,65 @@ class TestResponsesStreaming:
 
         assert streamed.usage.input_tokens == 10
         assert streamed.usage.output_tokens == 5
+
+    @pytest.mark.asyncio
+    async def test_streamed_reasoning_response_yields_thinking_events(self):
+        """`response.reasoning_summary_text.delta` events for the same `item_id` must
+        produce a PartStartEvent followed by a real PartDeltaEvent for a ThinkingPart --
+        not be silently ignored the way an unhandled event type would be."""
+        events = _events(
+            _make_event(
+                'response.reasoning_summary_text.delta', item_id='rs_1', summary_index=0, delta='Let me '
+            ),
+            _make_event(
+                'response.reasoning_summary_text.delta', item_id='rs_1', summary_index=0, delta='think...'
+            ),
+        )
+
+        streamed = await self.model._process_streamed_response(events, _params())
+        received = [event async for event in streamed]
+
+        start_events = [e for e in received if isinstance(e, PartStartEvent)]
+        delta_events = [e for e in received if isinstance(e, PartDeltaEvent)]
+
+        assert len(start_events) == 1
+        assert isinstance(start_events[0].part, ThinkingPart)
+        assert start_events[0].part.content == "Let me "
+        assert start_events[0].part.id == "rs_1"
+
+        assert len(delta_events) == 1
+        assert isinstance(delta_events[0].delta, ThinkingPartDelta)
+        assert delta_events[0].delta.content_delta == "think..."
+
+    @pytest.mark.asyncio
+    async def test_reasoning_signature_attached_on_output_item_done(self):
+        """The reasoning item's `encrypted_content` (signature) is only available once
+        streaming finishes, on `response.output_item.done` -- it must be merged into the
+        ThinkingPart already started by the summary text deltas, not create a new part."""
+        events = _events(
+            _make_event(
+                'response.reasoning_summary_text.delta', item_id='rs_1', summary_index=0, delta='Thinking...'
+            ),
+            _make_event(
+                'response.output_item.done',
+                item=_make_reasoning_item(item_id='rs_1', encrypted_content='enc-content'),
+            ),
+        )
+
+        streamed = await self.model._process_streamed_response(events, _params())
+        received = [event async for event in streamed]
+
+        thinking_events = [
+            e
+            for e in received
+            if (isinstance(e, PartStartEvent) and isinstance(e.part, ThinkingPart))
+            or (isinstance(e, PartDeltaEvent) and isinstance(e.delta, ThinkingPartDelta))
+        ]
+        assert len(thinking_events) == 2
+
+        signature_delta = thinking_events[1]
+        assert isinstance(signature_delta, PartDeltaEvent)
+        assert signature_delta.delta.signature_delta == "enc-content"
 
     @pytest.mark.asyncio
     async def test_provider_url_does_not_raise(self):
