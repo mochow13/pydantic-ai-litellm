@@ -207,3 +207,36 @@ class TestToolCalling:
         mock_response = MockLiteLLMResponse(content="Hello")
         result = self.model._process_response(mock_response)
         assert result.usage.requests == 0
+
+    @pytest.mark.asyncio
+    @patch('pydantic_ai_litellm.litellm_model.acompletion')
+    async def test_falsy_settings_are_still_forwarded(self, mock_acompletion):
+        """Falsy-but-explicitly-set values (`temperature=0`, `seed=0`,
+        `parallel_tool_calls=False`, etc.) must reach LiteLLM. Checking settings with plain
+        truthiness (`if x := model_settings.get(...):`) would silently drop them instead."""
+        mock_acompletion.return_value = MockLiteLLMResponse()
+
+        model_params = ModelRequestParameters(function_tools=[], output_tools=[], allow_text_output=True)
+        messages = [ModelRequest([UserPromptPart("Hi")])]
+
+        await self.model._completion_create(
+            messages=messages,
+            stream=False,
+            model_settings={
+                'temperature': 0,
+                'seed': 0,
+                'parallel_tool_calls': False,
+                'top_p': 0,
+                'timeout': 0,
+                'stop_sequences': [],
+            },
+            model_request_parameters=model_params,
+        )
+
+        call_args = mock_acompletion.call_args[1]
+        assert call_args['temperature'] == 0
+        assert call_args['seed'] == 0
+        assert call_args['parallel_tool_calls'] is False
+        assert call_args['top_p'] == 0
+        assert call_args['timeout'] == 0
+        assert call_args['stop'] == []

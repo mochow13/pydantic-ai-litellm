@@ -256,6 +256,37 @@ class TestResponsesToolCalling:
         tool_call_part = next(part for part in result.parts if isinstance(part, ToolCallPart))
         assert tool_call_part.tool_name == "calculator"
 
+    @pytest.mark.asyncio
+    @patch('pydantic_ai_litellm.responses_model.aresponses')
+    async def test_falsy_settings_are_still_forwarded(self, mock_aresponses):
+        """Falsy-but-explicitly-set values (`temperature=0`, `parallel_tool_calls=False`,
+        etc.) must reach LiteLLM. Checking settings with plain truthiness
+        (`if x := model_settings.get(...):`) would silently drop them instead."""
+        mock_aresponses.return_value = MockLiteLLMResponsesResponse(text="Hi")
+
+        model_params = ModelRequestParameters(function_tools=[], output_tools=[], allow_text_output=True)
+        messages = [ModelRequest([UserPromptPart("Hi")])]
+
+        await self.model._response_create(
+            messages=messages,
+            stream=False,
+            model_settings={
+                'temperature': 0,
+                'parallel_tool_calls': False,
+                'top_p': 0,
+                'timeout': 0,
+                'max_tokens': 0,
+            },
+            model_request_parameters=model_params,
+        )
+
+        call_args = mock_aresponses.call_args[1]
+        assert call_args['temperature'] == 0
+        assert call_args['parallel_tool_calls'] is False
+        assert call_args['top_p'] == 0
+        assert call_args['timeout'] == 0
+        assert call_args['max_output_tokens'] == 0
+
     def test_process_response_with_reasoning_multiple_summaries(self):
         """Multiple summary entries on one reasoning item map to multiple `ThinkingPart`s
         sharing the same `id`, with the signature attached only to the first."""

@@ -196,20 +196,22 @@ class LiteLLMResponsesModel(Model):
             if tool_choice:
                 response_kwargs['tool_choice'] = tool_choice
 
-        if parallel_tool_calls := model_settings.get('parallel_tool_calls'):
+        # Settings are checked with `is not None` rather than truthiness so that falsy-but-set
+        # values (`temperature=0`, `parallel_tool_calls=False`, etc.) are still forwarded.
+        if (parallel_tool_calls := model_settings.get('parallel_tool_calls')) is not None:
             response_kwargs['parallel_tool_calls'] = parallel_tool_calls
 
         # The Responses API calls this `max_output_tokens`, unlike Chat Completions' `max_tokens`.
-        if max_tokens := model_settings.get('max_tokens'):
+        if (max_tokens := model_settings.get('max_tokens')) is not None:
             response_kwargs['max_output_tokens'] = max_tokens
 
-        if temperature := model_settings.get('temperature'):
+        if (temperature := model_settings.get('temperature')) is not None:
             response_kwargs['temperature'] = temperature
 
-        if top_p := model_settings.get('top_p'):
+        if (top_p := model_settings.get('top_p')) is not None:
             response_kwargs['top_p'] = top_p
 
-        if timeout := model_settings.get('timeout'):
+        if (timeout := model_settings.get('timeout')) is not None:
             response_kwargs['timeout'] = timeout
 
         # `stop_sequences` and `seed` have no Responses API equivalent, so unlike
@@ -228,15 +230,15 @@ class LiteLLMResponsesModel(Model):
         if custom_provider:
             response_kwargs['custom_llm_provider'] = custom_provider
 
-        if metadata := model_settings.get('litellm_metadata'):
+        if (metadata := model_settings.get('litellm_metadata')) is not None:
             response_kwargs['metadata'] = metadata
 
-        if extra_headers := model_settings.get('extra_headers'):
+        if (extra_headers := model_settings.get('extra_headers')) is not None:
             extra_headers = dict(extra_headers)
             extra_headers.setdefault('User-Agent', get_user_agent())
             response_kwargs['extra_headers'] = extra_headers
 
-        if extra_body := model_settings.get('extra_body'):
+        if (extra_body := model_settings.get('extra_body')) is not None:
             response_kwargs['extra_body'] = extra_body
 
         try:

@@ -191,25 +191,27 @@ class LiteLLMModel(Model):
             if tool_choice:
                 completion_kwargs['tool_choice'] = tool_choice
 
-        if parallel_tool_calls := model_settings.get('parallel_tool_calls'):
+        # Settings are checked with `is not None` rather than truthiness so that falsy-but-set
+        # values (`temperature=0`, `seed=0`, `parallel_tool_calls=False`, etc.) are still forwarded.
+        if (parallel_tool_calls := model_settings.get('parallel_tool_calls')) is not None:
             completion_kwargs['parallel_tool_calls'] = parallel_tool_calls
 
-        if max_tokens := model_settings.get('max_tokens'):
+        if (max_tokens := model_settings.get('max_tokens')) is not None:
             completion_kwargs['max_tokens'] = max_tokens
 
-        if temperature := model_settings.get('temperature'):
+        if (temperature := model_settings.get('temperature')) is not None:
             completion_kwargs['temperature'] = temperature
 
-        if top_p := model_settings.get('top_p'):
+        if (top_p := model_settings.get('top_p')) is not None:
             completion_kwargs['top_p'] = top_p
 
-        if stop_sequences := model_settings.get('stop_sequences'):
+        if (stop_sequences := model_settings.get('stop_sequences')) is not None:
             completion_kwargs['stop'] = stop_sequences
 
-        if seed := model_settings.get('seed'):
+        if (seed := model_settings.get('seed')) is not None:
             completion_kwargs['seed'] = seed
 
-        if timeout := model_settings.get('timeout'):
+        if (timeout := model_settings.get('timeout')) is not None:
             completion_kwargs['timeout'] = timeout
 
         # Add LiteLLM-specific parameters
@@ -225,15 +227,15 @@ class LiteLLMModel(Model):
         if custom_provider:
             completion_kwargs['custom_llm_provider'] = custom_provider
 
-        if metadata := model_settings.get('litellm_metadata'):
+        if (metadata := model_settings.get('litellm_metadata')) is not None:
             completion_kwargs['metadata'] = metadata
 
-        if extra_headers := model_settings.get('extra_headers'):
+        if (extra_headers := model_settings.get('extra_headers')) is not None:
             extra_headers = dict(extra_headers)
             extra_headers.setdefault('User-Agent', get_user_agent())
             completion_kwargs['extra_headers'] = extra_headers
 
-        if extra_body := model_settings.get('extra_body'):
+        if (extra_body := model_settings.get('extra_body')) is not None:
             completion_kwargs['extra_body'] = extra_body
 
         try:
