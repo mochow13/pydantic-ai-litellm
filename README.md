@@ -94,6 +94,28 @@ agent = Agent(model=model, tools=[get_weather])
 result = await agent.run("What's the weather in Paris?")
 ```
 
+#### Reasoning round-tripping
+
+This model replays the full conversation history on each turn rather than using
+`previous_response_id`. For reasoning models, a reasoning item can only be safely replayed
+on the next turn if it carries its encrypted content — otherwise the Responses API rejects
+a bare reasoning id (`Item '<id>' of type 'reasoning' was provided without its required
+following item`). To preserve reasoning across turns (e.g. for multi-step tool calling),
+run statelessly and ask for the encrypted reasoning back:
+
+```python
+from pydantic_ai_litellm import LiteLLMResponsesModelSettings
+
+settings = LiteLLMResponsesModelSettings(
+    litellm_store=False,
+    litellm_include=["reasoning.encrypted_content"],
+)
+model = LiteLLMResponsesModel("gpt-5.1", api_key="your-api-key", settings=settings)
+```
+
+Without these settings the integration still works — reasoning items that lack encrypted
+content are simply dropped from the replayed history instead of being sent malformed.
+
 ### Tool Calling
 
 ```python

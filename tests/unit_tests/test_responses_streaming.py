@@ -39,10 +39,11 @@ def _make_event(event_type: str, **fields: object) -> Mock:
     return event
 
 
-def _make_function_call_item(*, call_id: str, name: str, arguments: str = '') -> Mock:
+def _make_function_call_item(*, call_id: str, name: str, arguments: str = '', item_id: str | None = None) -> Mock:
     item = Mock()
     item.type = 'function_call'
     item.call_id = call_id
+    item.id = item_id
     item.name = name
     item.arguments = arguments
     return item
@@ -115,7 +116,7 @@ class TestResponsesStreaming:
             _make_event(
                 'response.output_item.added',
                 output_index=0,
-                item=_make_function_call_item(call_id='call_1', name='calculator'),
+                item=_make_function_call_item(call_id='call_1', name='calculator', item_id='fc_1'),
             ),
             _make_event('response.function_call_arguments.delta', output_index=0, delta='{"a": 1,'),
             _make_event('response.function_call_arguments.delta', output_index=0, delta=' "b": 2}'),
@@ -131,6 +132,10 @@ class TestResponsesStreaming:
         assert isinstance(start_events[0].part, ToolCallPart)
         assert start_events[0].part.tool_name == "calculator"
         assert start_events[0].part.tool_call_id == "call_1"
+        # The function_call's own item `id` (distinct from `call_id`) must be preserved so
+        # reasoning models get both fields back on the next turn.
+        assert start_events[0].part.id == "fc_1"
+        assert start_events[0].part.provider_name == "litellm"
 
         assert len(delta_events) == 2
         assert isinstance(delta_events[0].delta, ToolCallPartDelta)

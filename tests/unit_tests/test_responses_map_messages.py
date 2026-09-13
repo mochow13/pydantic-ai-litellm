@@ -107,6 +107,31 @@ class TestResponsesMapMessages:
         assert result[2]['call_id'] == 'call_1'
 
     @pytest.mark.asyncio
+    async def test_function_call_id_dropped_for_other_provider(self):
+        """A function_call's item `id` is only meaningful to the provider that issued it, so a
+        ToolCallPart carrying another provider's `id` must not send it back to this one."""
+        messages = [
+            ModelResponse([
+                ToolCallPart(
+                    tool_name="calculator",
+                    args='{"a": 2, "b": 2}',
+                    tool_call_id="call_1",
+                    id="fc_1",
+                    provider_name="other-provider",
+                ),
+            ]),
+        ]
+
+        result = await self.model._map_messages(messages)
+
+        assert result == [{
+            'type': 'function_call',
+            'call_id': 'call_1',
+            'name': 'calculator',
+            'arguments': '{"a": 2, "b": 2}',
+        }]
+
+    @pytest.mark.asyncio
     async def test_assistant_text_mapped_to_message_item(self):
         """A plain text ModelResponse maps to an assistant message item."""
         messages = [
@@ -127,7 +152,13 @@ class TestResponsesMapMessages:
             ModelRequest([UserPromptPart("What is 2+2?")]),
             ModelResponse([
                 ThinkingPart(content="Let me think...", id="rs_1", signature="enc-content", provider_name="litellm"),
-                ToolCallPart(tool_name="calculator", args='{"a": 2, "b": 2}', tool_call_id="call_1"),
+                ToolCallPart(
+                    tool_name="calculator",
+                    args='{"a": 2, "b": 2}',
+                    tool_call_id="call_1",
+                    id="fc_1",
+                    provider_name="litellm",
+                ),
             ]),
         ]
 
@@ -139,7 +170,15 @@ class TestResponsesMapMessages:
             'summary': [{'type': 'summary_text', 'text': 'Let me think...'}],
             'encrypted_content': 'enc-content',
         }
-        assert result[2]['type'] == 'function_call'
+        # Reasoning models require the replayed function_call to carry both `call_id` and its
+        # own item `id`, or the request is rejected.
+        assert result[2] == {
+            'type': 'function_call',
+            'call_id': 'call_1',
+            'name': 'calculator',
+            'arguments': '{"a": 2, "b": 2}',
+            'id': 'fc_1',
+        }
 
     @pytest.mark.asyncio
     async def test_multiple_thinking_parts_merged_into_one_reasoning_item(self):
@@ -173,6 +212,37 @@ class TestResponsesMapMessages:
         result = await self.model._map_messages(messages)
 
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_thinking_part_without_signature_is_dropped(self):
+        """A `ThinkingPart` with no `signature` (encrypted_content) can't be validated
+        statelessly by the Responses API, so replaying its bare `id` would 400 on the next
+        turn. It's dropped instead. Enable `litellm_include=['reasoning.encrypted_content']`
+        to have the signature returned so the reasoning can round-trip."""
+        messages = [
+            ModelResponse([
+                ThinkingPart(content="Unsigned thought.", id="rs_1", provider_name="litellm"),
+                ToolCallPart(
+                    tool_name="calculator",
+                    args='{"a": 2, "b": 2}',
+                    tool_call_id="call_1",
+                    id="fc_1",
+                    provider_name="litellm",
+                ),
+            ]),
+        ]
+
+        result = await self.model._map_messages(messages)
+
+        # The reasoning item is gone, but the function_call it preceded is still sent (a
+        # function_call without a preceding reasoning item is valid; the reverse is not).
+        assert result == [{
+            'type': 'function_call',
+            'call_id': 'call_1',
+            'name': 'calculator',
+            'arguments': '{"a": 2, "b": 2}',
+            'id': 'fc_1',
+        }]
 
     @pytest.mark.asyncio
     async def test_thinking_part_from_other_provider_is_dropped(self):

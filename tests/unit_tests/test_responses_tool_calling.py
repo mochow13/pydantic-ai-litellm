@@ -56,6 +56,7 @@ class MockLiteLLMResponsesResponse:
             call_item = Mock()
             call_item.type = 'function_call'
             call_item.call_id = call['call_id']
+            call_item.id = call.get('id')
             call_item.name = call['name']
             call_item.arguments = call['arguments']
             self.output.append(call_item)
@@ -190,7 +191,12 @@ class TestResponsesToolCalling:
         """Test processing a response that contains a tool call."""
         mock_response = MockLiteLLMResponsesResponse(
             text="I'll calculate that for you.",
-            tool_calls=[{'call_id': 'call_123', 'name': 'calculator', 'arguments': '{"operation": "add", "a": 5, "b": 3}'}]
+            tool_calls=[{
+                'call_id': 'call_123',
+                'id': 'fc_123',
+                'name': 'calculator',
+                'arguments': '{"operation": "add", "a": 5, "b": 3}',
+            }]
         )
 
         result = self.model._process_response(mock_response)
@@ -206,6 +212,10 @@ class TestResponsesToolCalling:
         assert tool_call_part.tool_name == "calculator"
         assert tool_call_part.args == '{"operation": "add", "a": 5, "b": 3}'
         assert tool_call_part.tool_call_id == "call_123"
+        # The function_call's own item `id` (distinct from `call_id`) must be preserved so
+        # it can be replayed to reasoning models, which require both fields.
+        assert tool_call_part.id == "fc_123"
+        assert tool_call_part.provider_name == "litellm"
 
     def test_process_response_text_only(self):
         """Test processing a response with only text content (no tool calls)."""
@@ -286,6 +296,53 @@ class TestResponsesToolCalling:
         assert call_args['top_p'] == 0
         assert call_args['timeout'] == 0
         assert call_args['max_output_tokens'] == 0
+
+    @pytest.mark.asyncio
+    @patch('pydantic_ai_litellm.responses_model.aresponses')
+    async def test_store_and_include_settings_are_forwarded(self, mock_aresponses):
+        """`litellm_store` / `litellm_include` must reach the Responses API so stateless
+        encrypted reasoning can be enabled (`store=False` +
+        `include=['reasoning.encrypted_content']`). `store=False` is falsy, so it must be
+        forwarded via an `is not None` check rather than dropped."""
+        mock_aresponses.return_value = MockLiteLLMResponsesResponse(text="Hi")
+
+        model_params = ModelRequestParameters(function_tools=[], output_tools=[], allow_text_output=True)
+        messages = [ModelRequest([UserPromptPart("Hi")])]
+
+        await self.model._response_create(
+            messages=messages,
+            stream=False,
+            model_settings={
+                'litellm_store': False,
+                'litellm_include': ['reasoning.encrypted_content'],
+            },
+            model_request_parameters=model_params,
+        )
+
+        call_args = mock_aresponses.call_args[1]
+        assert call_args['store'] is False
+        assert call_args['include'] == ['reasoning.encrypted_content']
+
+    @pytest.mark.asyncio
+    @patch('pydantic_ai_litellm.responses_model.aresponses')
+    async def test_store_and_include_omitted_when_unset(self, mock_aresponses):
+        """When neither setting is provided, we must not send `store` / `include` at all --
+        letting the provider apply its own defaults."""
+        mock_aresponses.return_value = MockLiteLLMResponsesResponse(text="Hi")
+
+        model_params = ModelRequestParameters(function_tools=[], output_tools=[], allow_text_output=True)
+        messages = [ModelRequest([UserPromptPart("Hi")])]
+
+        await self.model._response_create(
+            messages=messages,
+            stream=False,
+            model_settings={},
+            model_request_parameters=model_params,
+        )
+
+        call_args = mock_aresponses.call_args[1]
+        assert 'store' not in call_args
+        assert 'include' not in call_args
 
     def test_process_response_with_reasoning_multiple_summaries(self):
         """Multiple summary entries on one reasoning item map to multiple `ThinkingPart`s

@@ -77,6 +77,18 @@ class LiteLLMResponsesModelSettings(ModelSettings, total=False):
     """Additional metadata to pass to LiteLLM."""
     litellm_metadata: dict[str, Any]
 
+    """Whether the provider stores the response server-side (OpenAI's `store`).
+
+    Pair `store=False` with `litellm_include=['reasoning.encrypted_content']` to replay
+    reasoning statelessly across turns.
+    """
+    litellm_store: bool
+
+    """Extra `include` values for the Responses API, e.g. `['reasoning.encrypted_content']`
+    so reasoning models return encrypted reasoning; without it, reasoning items are dropped
+    from replayed history rather than sent malformed."""
+    litellm_include: list[str]
+
 
 @dataclass(init=False)
 class LiteLLMResponsesModel(Model):
@@ -233,6 +245,12 @@ class LiteLLMResponsesModel(Model):
         if (metadata := model_settings.get('litellm_metadata')) is not None:
             response_kwargs['metadata'] = metadata
 
+        if (store := model_settings.get('litellm_store')) is not None:
+            response_kwargs['store'] = store
+
+        if (include := model_settings.get('litellm_include')) is not None:
+            response_kwargs['include'] = include
+
         if (extra_headers := model_settings.get('extra_headers')) is not None:
             extra_headers = dict(extra_headers)
             extra_headers.setdefault('User-Agent', get_user_agent())
@@ -272,12 +290,18 @@ class LiteLLMResponsesModel(Model):
                             items.append(TextPart(content=text))
 
             elif item_type == 'function_call':
+                # Keep `call_id` (pairs with the output) and the item's own `id` separate:
+                # reasoning models require both to be sent back on the next turn.
+                item_id = _get_field(output_item, 'id')
                 part = ToolCallPart(
                     tool_name=_get_field(output_item, 'name'),
                     args=_get_field(output_item, 'arguments'),
-                    tool_call_id=_get_field(output_item, 'call_id') or _get_field(output_item, 'id'),
+                    tool_call_id=_get_field(output_item, 'call_id') or item_id,
                 )
                 part.tool_call_id = _guard_tool_call_id(part)
+                if item_id:
+                    part.id = item_id
+                    part.provider_name = self._system  # required whenever `id` is set
                 items.append(part)
 
             elif item_type == 'reasoning':
@@ -454,21 +478,35 @@ class LiteLLMResponsesModel(Model):
                             'content': part.content,
                         })
                     elif isinstance(part, ToolCallPart):
-                        input_items.append({
+                        function_call_item: dict[str, Any] = {
                             'type': 'function_call',
                             'call_id': _guard_tool_call_id(t=part),
                             'name': part.tool_name,
                             'arguments': part.args_as_json_str(),
-                        })
+                        }
+                        # Reasoning models require the function_call's own `id` alongside
+                        # `call_id`. The id is only meaningful to the provider that issued it.
+                        if part.id and part.provider_name == self._system:
+                            function_call_item['id'] = part.id
+                        input_items.append(function_call_item)
                     elif isinstance(part, ThinkingPart):
                         if part.provider_name != self._system or not part.id:
                             continue
 
                         reasoning_item = reasoning_items.get(part.id)
                         if reasoning_item is None:
-                            reasoning_item = {'type': 'reasoning', 'id': part.id, 'summary': []}
-                            if part.signature:
-                                reasoning_item['encrypted_content'] = part.signature
+                            # Only replay reasoning that carries its `encrypted_content`
+                            # (`signature`); a bare reasoning id would 400 on the next turn since
+                            # this model doesn't use `previous_response_id`. Enable via
+                            # `litellm_include=['reasoning.encrypted_content']` + `litellm_store=False`.
+                            if not part.signature:
+                                continue
+                            reasoning_item = {
+                                'type': 'reasoning',
+                                'id': part.id,
+                                'summary': [],
+                                'encrypted_content': part.signature,
+                            }
                             reasoning_items[part.id] = reasoning_item
                             input_items.append(reasoning_item)
 
@@ -507,14 +545,16 @@ class LiteLLMResponsesStreamedResponse(StreamedResponse):
             elif event_type == 'response.output_item.added':
                 item = _get_field(chunk, 'item')
                 if _get_field(item, 'type') == 'function_call':
-                    maybe_event = self._parts_manager.handle_tool_call_delta(
+                    # Emit a full part (not a delta) so we can carry the `id`; `handle_tool_call_delta`
+                    # can't. Later `function_call_arguments.delta` events append to it.
+                    yield self._parts_manager.handle_tool_call_part(
                         vendor_part_id=_get_field(chunk, 'output_index'),
                         tool_name=_get_field(item, 'name'),
                         args=_get_field(item, 'arguments') or None,
                         tool_call_id=_get_field(item, 'call_id'),
+                        id=_get_field(item, 'id'),
+                        provider_name=self.provider_name,
                     )
-                    if maybe_event is not None:
-                        yield maybe_event
 
             # Handle tool call argument deltas
             elif event_type == 'response.function_call_arguments.delta':
